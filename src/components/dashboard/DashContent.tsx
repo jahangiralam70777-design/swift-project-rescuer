@@ -5,6 +5,7 @@ import { lazy, memo, Suspense, useEffect, useMemo, useState } from "react";
 import { useModuleVisibility } from "@/hooks/use-module-visibility";
 import { studentDashboardSnapshot } from "@/lib/student-dashboard.functions";
 import { studentAdvancedAnalytics } from "@/lib/student-advanced-analytics.functions";
+import { studentDailyProgress } from "@/lib/student-daily-progress.functions";
 import { useAppStore } from "@/stores/app-store";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -118,8 +119,21 @@ export function DashContent() {
     refetchOnMount: false,
   });
 
+  // Share the exact same data source as Daily Progress → "Accuracy Over Time".
+  // Same server fn, same query key (dedupes), same series + accuracy values.
+  const fetchDailyProgress = useServerFn(studentDailyProgress);
+  const { data: dailyProgress } = useQuery({
+    queryKey: ["student-daily-progress"],
+    queryFn: () => fetchDailyProgress(),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
   const counts = data?.counts;
   const bars = data?.bars ?? [0, 0, 0, 0, 0, 0, 0];
+  const accuracySeries = useMemo(() => dailyProgress?.series ?? [], [dailyProgress]);
   const subjects = useMemo(() => {
     const list = data?.subjects ?? [];
     const palette = [
@@ -189,21 +203,19 @@ export function DashContent() {
     dailyTarget > 0 ? Math.min(100, Math.round((mcqsMonth / (dailyTarget * 30)) * 100)) : 0;
   const todayPct = dailyPercent;
 
-  // ── Accuracy Trend filter (real data only). ──
-  // `bars` from the server is 7 entries (oldest → today, index 6 = today),
-  // each value already computed as (correct ÷ submitted) × 100 across MCQ
-  // Practice + Quiz + Mock + Custom Exam submissions for that day.
+  // ── Accuracy Trend ──
+  // Uses the EXACT same data source as Daily Progress → "Accuracy Over Time"
+  // (studentDailyProgress server fn, `series[].accuracy`). Single source of
+  // truth — any change to the daily-progress accuracy logic flows through
+  // here automatically.
   const [accuracyRange, setAccuracyRange] = useState<"today" | "week">("week");
-  const accuracyBars = useMemo(
-    () => (accuracyRange === "today" ? [bars[6] ?? 0] : bars),
-    [accuracyRange, bars],
-  );
-  const accuracyLabels = useMemo(
-    () => (accuracyRange === "today" ? ["Today"] : days),
-    [accuracyRange],
-  );
-  const accuracyHasData =
-    accuracyRange === "today" ? mcqsToday > 0 : mcqsWeek > 0;
+  const accuracyPoints = useMemo(() => {
+    const n = accuracyRange === "today" ? 1 : 7;
+    return accuracySeries.slice(-n).map((d) => ({ label: d.label, value: d.accuracy }));
+  }, [accuracySeries, accuracyRange]);
+  const accuracyBars = useMemo(() => accuracyPoints.map((p) => p.value), [accuracyPoints]);
+  const accuracyLabels = useMemo(() => accuracyPoints.map((p) => p.label), [accuracyPoints]);
+  const accuracyHasData = accuracyPoints.some((p) => p.value > 0);
 
 
   const recommendations = data?.recommendations ?? [];
