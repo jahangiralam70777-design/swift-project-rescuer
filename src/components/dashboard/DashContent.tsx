@@ -125,10 +125,12 @@ export function DashContent() {
   const { data: dailyProgress } = useQuery({
     queryKey: ["student-daily-progress"],
     queryFn: () => fetchDailyProgress(),
-    staleTime: 5 * 60_000,
+    // Match DailyProgressCenter's freshness so both charts stay perfectly in
+    // sync (the realtime invalidator also refetches on attempt_answers /
+    // mcq_practice_progress changes, so submissions show up immediately).
+    staleTime: 15_000,
     gcTime: 30 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true,
   });
 
   const counts = data?.counts;
