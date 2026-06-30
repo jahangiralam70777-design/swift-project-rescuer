@@ -399,7 +399,7 @@ export function DashContent() {
               })}
             </div>
           </div>
-          {accuracyHasData ? (
+          {accuracyHasSeries ? (
             <div className="mt-6 flex h-56 items-end gap-3">
               {accuracyBars.map((h, i) => (
                 <div key={i} className="group/bar flex flex-1 flex-col items-center gap-2">
