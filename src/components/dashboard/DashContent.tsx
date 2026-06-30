@@ -217,7 +217,7 @@ export function DashContent() {
   }, [accuracySeries, accuracyRange]);
   const accuracyBars = useMemo(() => accuracyPoints.map((p) => p.value), [accuracyPoints]);
   const accuracyLabels = useMemo(() => accuracyPoints.map((p) => p.label), [accuracyPoints]);
-  const accuracyHasData = accuracyPoints.some((p) => p.value > 0);
+  const accuracyHasSeries = accuracyPoints.length > 0;
 
 
   const recommendations = data?.recommendations ?? [];
