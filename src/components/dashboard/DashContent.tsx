@@ -125,10 +125,12 @@ export function DashContent() {
   const { data: dailyProgress } = useQuery({
     queryKey: ["student-daily-progress"],
     queryFn: () => fetchDailyProgress(),
-    staleTime: 5 * 60_000,
+    // Match DailyProgressCenter's freshness so both charts stay perfectly in
+    // sync (the realtime invalidator also refetches on attempt_answers /
+    // mcq_practice_progress changes, so submissions show up immediately).
+    staleTime: 15_000,
     gcTime: 30 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true,
   });
 
   const counts = data?.counts;
@@ -215,7 +217,7 @@ export function DashContent() {
   }, [accuracySeries, accuracyRange]);
   const accuracyBars = useMemo(() => accuracyPoints.map((p) => p.value), [accuracyPoints]);
   const accuracyLabels = useMemo(() => accuracyPoints.map((p) => p.label), [accuracyPoints]);
-  const accuracyHasData = accuracyPoints.some((p) => p.value > 0);
+  const accuracyHasSeries = accuracyPoints.length > 0;
 
 
   const recommendations = data?.recommendations ?? [];
@@ -397,7 +399,7 @@ export function DashContent() {
               })}
             </div>
           </div>
-          {accuracyHasData ? (
+          {accuracyHasSeries ? (
             <div className="mt-6 flex h-56 items-end gap-3">
               {accuracyBars.map((h, i) => (
                 <div key={i} className="group/bar flex flex-1 flex-col items-center gap-2">
